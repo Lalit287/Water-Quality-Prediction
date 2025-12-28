@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Potability Prediction</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        input[type="number"] {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-predict {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-predict:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-reset {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-reset:hover {
+            background: #e0e0e0;
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result.safe {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .result.unsafe {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+        }
+
+        .result h2 {
+            font-size: 2em;
+            margin-bottom: 15px;
+        }
+
+        .confidence {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+
+        .confidence-bar {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            height: 30px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: width 1s ease;
+        }
+
+        .loading {
+            text-align: center;
+            display: none;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f44336;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💧 Water Potability Prediction</h1>
+        <p class="subtitle">Enter water quality parameters to check if it's safe to drink</p>
+
+        <form id="predictionForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="ph">pH Level</label>
+                    <input type="number" id="ph" step="0.01" required placeholder="e.g., 7.5">
+                </div>
+
+                <div class="form-group">
+                    <label for="hardness">Hardness (mg/L)</label>
+                    <input type="number" id="hardness" step="0.01" required placeholder="e.g., 200">
+                </div>
+
+                <div class="form-group">
+                    <label for="solids">Solids (ppm)</label>
+                    <input type="number" id="solids" step="0.01" required placeholder="e.g., 20000">
+                </div>
+
+                <div class="form-group">
+                    <label for="chloramines">Chloramines (ppm)</label>
+                    <input type="number" id="chloramines" step="0.01" required placeholder="e.g., 7.5">
+                </div>
+
+                <div class="form-group">
+                    <label for="sulfate">Sulfate (mg/L)</label>
+                    <input type="number" id="sulfate" step="0.01" required placeholder="e.g., 350">
+                </div>
+
+                <div class="form-group">
+                    <label for="conductivity">Conductivity (μS/cm)</label>
+                    <input type="number" id="conductivity" step="0.01" required placeholder="e.g., 400">
+                </div>
+
+                <div class="form-group">
+                    <label for="organic_carbon">Organic Carbon (ppm)</label>
+                    <input type="number" id="organic_carbon" step="0.01" required placeholder="e.g., 15">
+                </div>
+
+                <div class="form-group">
+                    <label for="trihalomethanes">Trihalomethanes (μg/L)</label>
+                    <input type="number" id="trihalomethanes" step="0.01" required placeholder="e.g., 70">
+                </div>
+
+                <div class="form-group">
+                    <label for="turbidity">Turbidity (NTU)</label>
+                    <input type="number" id="turbidity" step="0.01" required placeholder="e.g., 4.5">
+                </div>
+            </div>
+
+            <div class="btn-container">
+                <button type="button" class="btn-random" id="randomBtn">🎲 Fill Random Values</button>
+                <button type="submit" class="btn-predict">🔍 Predict Potability</button>
+                <button type="reset" class="btn-reset">🔄 Reset</button>
+            </div>
+        </form>
+
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Analyzing water quality...</p>
+        </div>
+
+        <div class="error" id="errorMessage"></div>
+
+        <div class="result" id="result">
+            <h2 id="resultTitle"></h2>
+            <p id="resultMessage"></p>
+            <div class="confidence">
+                <h3>Confidence Levels</h3>
+                <p>Potable: <span id="potablePercent"></span>%</p>
+                <div class="confidence-bar">
+                    <div class="confidence-fill" id="potableBar"></div>
+                </div>
+                <p>Not Potable: <span id="notPotablePercent"></span>%</p>
+                <div class="confidence-bar">
+                    <div class="confidence-fill" id="notPotableBar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('predictionForm');
+        const resultDiv = document.getElementById('result');
+        const loadingDiv = document.querySelector('.loading');
+        const errorDiv = document.getElementById('errorMessage');
+        const randomBtn = document.getElementById('randomBtn');
+
+        // Random value generator with realistic ranges
+        const randomRanges = {
+            ph: { min: 0, max: 14 },
+            hardness: { min: 50, max: 400 },
+            solids: { min: 5000, max: 50000 },
+            chloramines: { min: 0, max: 15 },
+            sulfate: { min: 100, max: 500 },
+            conductivity: { min: 100, max: 800 },
+            organic_carbon: { min: 0, max: 30 },
+            trihalomethanes: { min: 0, max: 150 },
+            turbidity: { min: 0, max: 10 }
+        };
+
+        // Fill random values
+        randomBtn.addEventListener('click', () => {
+            for (const [field, range] of Object.entries(randomRanges)) {
+                const randomValue = (Math.random() * (range.max - range.min) + range.min).toFixed(2);
+                document.getElementById(field).value = randomValue;
+            }
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Hide previous results
+            resultDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            loadingDiv.style.display = 'block';
+
+            // Collect form data
+            const features = [
+                parseFloat(document.getElementById('ph').value),
+                parseFloat(document.getElementById('hardness').value),
+                parseFloat(document.getElementById('solids').value),
+                parseFloat(document.getElementById('chloramines').value),
+                parseFloat(document.getElementById('sulfate').value),
+                parseFloat(document.getElementById('conductivity').value),
+                parseFloat(document.getElementById('organic_carbon').value),
+                parseFloat(document.getElementById('trihalomethanes').value),
+                parseFloat(document.getElementById('turbidity').value)
+            ];
+
+            try {
+                // Call API
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ features })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Display results
+                    loadingDiv.style.display = 'none';
+                    resultDiv.style.display = 'block';
+
+                    if (data.prediction === 1) {
+                        resultDiv.className = 'result safe';
+                        document.getElementById('resultTitle').textContent = '✅ Safe to Drink';
+                        document.getElementById('resultMessage').textContent = 'The water quality meets safety standards for consumption.';
+                    } else {
+                        resultDiv.className = 'result unsafe';
+                        document.getElementById('resultTitle').textContent = '⚠️ Not Safe to Drink';
+                        document.getElementById('resultMessage').textContent = 'The water quality does not meet safety standards. Further treatment required.';
+                    }
+
+                    // Update confidence bars
+                    const potableConf = (data.confidence.potable * 100).toFixed(2);
+                    const notPotableConf = (data.confidence.not_potable * 100).toFixed(2);
+
+                    document.getElementById('potablePercent').textContent = potableConf;
+                    document.getElementById('notPotablePercent').textContent = notPotableConf;
+
+                    document.getElementById('potableBar').style.width = potableConf + '%';
+                    document.getElementById('potableBar').textContent = potableConf + '%';
+
+                    document.getElementById('notPotableBar').style.width = notPotableConf + '%';
+                    document.getElementById('notPotableBar').textContent = notPotableConf + '%';
+                } else {
+                    throw new Error(data.error || 'Prediction failed');
+                }
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = '❌ Error: ' + error.message;
+            }
+        });
+
+        form.addEventListener('reset', () => {
+            resultDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
